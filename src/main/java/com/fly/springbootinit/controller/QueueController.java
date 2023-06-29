@@ -1,7 +1,9 @@
 package com.fly.springbootinit.controller;
 
 import cn.hutool.json.JSONUtil;
+import com.fly.springbootinit.common.ErrorCode;
 import com.fly.springbootinit.config.ThreadPoolExecutorConfig;
+import com.fly.springbootinit.exception.BusinessException;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,7 +31,7 @@ public class QueueController {
             try {
                 Thread.sleep(60000);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                throw new BusinessException(ErrorCode.PARAMS_ERROR,"当前服务器请求紧张，请稍后再试");
             }
         },threadPoolExecutor);
     }

@@ -406,41 +406,46 @@ public class ChartController {
 
         // todo 采用异步
         // todo 建议处理异常情况
-        CompletableFuture.runAsync(() -> {
-            //先修改图表状态为'执行中'，执行完毕后修改为'已完成'，保存执行结果，执行失败后，状态修改为'失败'记录失败信息
-            Chart updateChart = new Chart();
-            updateChart.setId(chart.getId());
-            updateChart.setStatus(ChartStatusEnum.Running.getValue());
-            boolean success = chartService.updateById(updateChart);
-            if (!success) {
-                // todo 进一步完善失败
-                handleChartUpdateError(chart.getId(), "更新图表状态失败");
-                // throw new BusinessException(ErrorCode.OPERATION_ERROR, "图表更新失败");
-                return;
-            }
+        try {
+            CompletableFuture.runAsync(() -> {
+                //先修改图表状态为'执行中'，执行完毕后修改为'已完成'，保存执行结果，执行失败后，状态修改为'失败'记录失败信息
+                Chart updateChart = new Chart();
+                updateChart.setId(chart.getId());
+                updateChart.setStatus(ChartStatusEnum.Running.getValue());
+                boolean success = chartService.updateById(updateChart);
+                if (!success) {
+                    // todo 进一步完善失败
+                    handleChartUpdateError(chart.getId(), "更新图表状态失败");
+                    // throw new BusinessException(ErrorCode.OPERATION_ERROR, "图表更新失败");
+                    return;
+                }
 
-            // 调用AI
-            String chartResult = yuApi.doChart(modelId, stringBuilder.toString());
-            String[] splits = chartResult.split("【【【【【");
+                // 调用AI
+                String chartResult = yuApi.doChart(modelId, stringBuilder.toString());
+                String[] splits = chartResult.split("【【【【【");
 
-            if (splits.length > 3) {
-                handleChartUpdateError(chart.getId(), "AI生成错误");
-                // throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI生成错误");
-                return;
-            }
-            String genChart = splits[1].trim();
-            String genResult = splits[2].trim();
-            Chart updateChartSuccess = new Chart();
-            updateChartSuccess.setId(chart.getId());
-            // todo 枚举值
-            updateChartSuccess.setStatus(ChartStatusEnum.Succeed.getValue());
-            updateChartSuccess.setGenChart(genChart);
-            updateChartSuccess.setGenResult(genResult);
-            boolean b = chartService.updateById(updateChartSuccess);
-            if (!b) {
-                handleChartUpdateError(chart.getId(), "更新图表状态失败");
-            }
-        }, threadPoolExecutor);
+                if (splits.length > 3) {
+                    handleChartUpdateError(chart.getId(), "AI生成错误");
+                    // throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI生成错误");
+                    return;
+                }
+                String genChart = splits[1].trim();
+                String genResult = splits[2].trim();
+                Chart updateChartSuccess = new Chart();
+                updateChartSuccess.setId(chart.getId());
+                // todo 枚举值
+                updateChartSuccess.setStatus(ChartStatusEnum.Succeed.getValue());
+                updateChartSuccess.setGenChart(genChart);
+                updateChartSuccess.setGenResult(genResult);
+                boolean b = chartService.updateById(updateChartSuccess);
+                if (!b) {
+                    handleChartUpdateError(chart.getId(), "更新图表状态失败");
+                }
+            }, threadPoolExecutor);
+        } catch (Exception e) {
+            //todo 添加重试机制
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"同时请求人数过多，稍后进行尝试");
+        }
 
         return ResultUtils.success(biResponse);
     }
@@ -456,5 +461,8 @@ public class ChartController {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "图表更新失败");
         }
     }
+
+
+
 
 }
