@@ -56,7 +56,8 @@
 
 用户不需要进行等待，
 
-
+### BI 前端
+https://github.com/flybase1/flybi-frontend
 
 
 
