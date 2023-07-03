@@ -1,5 +1,7 @@
 package com.fly.springbootinit.controller;
 
+import java.util.Date;
+
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.json.JSON;
 import cn.hutool.json.JSONObject;
@@ -15,6 +17,7 @@ import com.fly.springbootinit.common.BaseResponse;
 import com.fly.springbootinit.common.DeleteRequest;
 import com.fly.springbootinit.common.ErrorCode;
 import com.fly.springbootinit.common.ResultUtils;
+import com.fly.springbootinit.constant.CommonConstant;
 import com.fly.springbootinit.constant.RedisConstant;
 import com.fly.springbootinit.constant.UserConstant;
 import com.fly.springbootinit.exception.BusinessException;
@@ -161,7 +164,7 @@ public class ChartController {
      * @return
      */
     @GetMapping( "/get" )
-    public BaseResponse<Chart> getChartById(long id, HttpServletRequest request) {
+    public BaseResponse<Chart> getChartById(long id) {
         if (id <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -171,6 +174,24 @@ public class ChartController {
         }
         return ResultUtils.success(chart);
     }
+
+    /**
+     * 获取当前详细的数据库表
+     *
+     * @param id
+     * @return
+     */
+    @GetMapping( "/chartDetail" )
+    public BaseResponse<List<Map<String, Object>>> getChartDetailById(long id) {
+        if (id <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        String chartName = "chart_" + id;
+        List<Map<String, Object>> allData = chartDetailMapper.findAllData(chartName);
+
+        return ResultUtils.success(allData);
+    }
+
 
     /**
      * 分页获取列表（封装类）
@@ -277,7 +298,7 @@ public class ChartController {
         ThrowUtils.throwIf(size > ONE_MB, ErrorCode.PARAMS_ERROR, "文件超过 1M");
         // 校验文件后缀 aaa.png
         String suffix = FileUtil.getSuffix(originalFilename);
-        final List<String> validFileSuffixList = Arrays.asList("xls", "xlsx");
+        final List<String> validFileSuffixList = Arrays.asList("xls", "xlsx", "csv");
         ThrowUtils.throwIf(!validFileSuffixList.contains(suffix), ErrorCode.PARAMS_ERROR, "文件后缀非法");
 
         User loginUser = userService.getLoginUser(request);
@@ -333,13 +354,24 @@ public class ChartController {
         chart.setChartType(chartType);
         chart.setGenChart(genChart);
         chart.setGenResult(genResult);
+        chart.setStatus(ChartStatusEnum.Succeed.getValue());
         chart.setUserId(loginUser.getId());
+        boolean countSuccess = userService.updateUserChartCount(request);
+
+        if (!countSuccess) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR);
+        }
+
         boolean saveResult = chartService.save(chart);
-        ThrowUtils.throwIf(!saveResult, ErrorCode.SYSTEM_ERROR, "图表保存失败");
+        if (!saveResult) {
+            chart.setStatus(ChartStatusEnum.Failed.getValue());
+        }
+
         BIResponse biResponse = new BIResponse();
         biResponse.setGenChart(genChart);
         biResponse.setGenResult(genResult);
         biResponse.setChartId(chart.getId());
+        createAndInsertDataToDb(chart.getId(), multipartFile);
         return ResultUtils.success(biResponse);
     }
 
@@ -370,7 +402,7 @@ public class ChartController {
         final long ONE_MB = 1024 * 1024L;
         ThrowUtils.throwIf(size > ONE_MB, ErrorCode.PARAMS_ERROR, "文件过大，超过1MB");
         String suffix = FileUtil.getSuffix(originalFilename);
-        final List<String> validFileSuffixList = Arrays.asList("xlsx", "xls");
+        final List<String> validFileSuffixList = Arrays.asList("xlsx", "xls", "csv");
         ThrowUtils.throwIf(!validFileSuffixList.contains(suffix), ErrorCode.PARAMS_ERROR, "文件后缀非法");
 
         User loginUser = userService.getLoginUser(request);
@@ -461,7 +493,6 @@ public class ChartController {
             //todo 添加重试机制
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "同时请求人数过多，稍后进行尝试");
         }
-
         return ResultUtils.success(biResponse);
     }
 
@@ -503,7 +534,7 @@ public class ChartController {
         final long ONE_MB = 1024 * 1024L;
         ThrowUtils.throwIf(size > ONE_MB, ErrorCode.PARAMS_ERROR, "文件过大，超过1MB");
         String suffix = FileUtil.getSuffix(originalFilename);
-        final List<String> validFileSuffixList = Arrays.asList("xlsx", "xls");
+        final List<String> validFileSuffixList = Arrays.asList("xlsx", "xls", "csv");
         ThrowUtils.throwIf(!validFileSuffixList.contains(suffix), ErrorCode.PARAMS_ERROR, "文件后缀非法");
 
         User loginUser = userService.getLoginUser(request);
@@ -532,12 +563,19 @@ public class ChartController {
         chart.setChartData(result);
         chart.setStatus(ChartStatusEnum.Wait.getValue());
         chart.setUserId(userService.getLoginUser(request).getId());
+        boolean countSuccess = userService.updateUserChartCount(request);
+
+        if (!countSuccess) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR);
+        }
 
         boolean saveResult = chartService.save(chart);
         ThrowUtils.throwIf(!saveResult, ErrorCode.SYSTEM_ERROR, "保存失败");
         BIResponse biResponse = new BIResponse();
         Long chartId = chart.getId();
         biResponse.setChartId(chartId);
+
+        createAndInsertDataToDb(chartId, multipartFile);
 
         // todo 采用异步
         // todo 建议处理任务队列满了异常情况
@@ -551,170 +589,56 @@ public class ChartController {
         return ResultUtils.success(biResponse);
     }
 
-
     /**
-     * 分表
+     * 分库
      *
+     * @param chartId
      * @param multipartFile
-     * @param genChartByAIRequest
-     * @param request
-     * @return
      */
-    @PostMapping( "/gen/async/mq/singleTable" )
-    public BaseResponse<BIResponse> genChartAiAsyncMQSingleTable(@RequestPart( "file" ) MultipartFile multipartFile,
-                                                                 GenChartByAIRequest genChartByAIRequest, HttpServletRequest request) {
-
-
-        String name = genChartByAIRequest.getName();
-        String goal = genChartByAIRequest.getGoal();
-        String chartType = genChartByAIRequest.getChartType();
-
-        // 校验
-        ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "请求为空");
-        ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() >= 100, ErrorCode.PARAMS_ERROR, "名称过长");
-
-        //todo 校验文件
-        long size = multipartFile.getSize();
-        String originalFilename = multipartFile.getOriginalFilename();
-        final long ONE_MB = 1024 * 1024L;
-        ThrowUtils.throwIf(size > ONE_MB, ErrorCode.PARAMS_ERROR, "文件过大，超过1MB");
-        String suffix = FileUtil.getSuffix(originalFilename);
-        final List<String> validFileSuffixList = Arrays.asList("xlsx", "xls");
-        ThrowUtils.throwIf(!validFileSuffixList.contains(suffix), ErrorCode.PARAMS_ERROR, "文件后缀非法");
-
-        User loginUser = userService.getLoginUser(request);
-        // todo 限流判断
-        // 每个用户限流器
-        redisLimiterManager.doRateLimit("genChartByAi" + loginUser.getId());
-
-        long modelId = 1663789163637420033L;
-
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("分析需求:").append("\n");
-        String userGoal = goal;
-        if (StringUtils.isNotBlank(chartType)) {
-            userGoal += ",请使用" + chartType;
-        }
-        stringBuilder.append(userGoal).append("\n");
-        stringBuilder.append("原始数据:").append("\n");
-
-        // 文件处理,压缩后的数据
-        String result = ExcelUtils.excelToCsv(multipartFile);
-        String[] lines = result.split(System.lineSeparator());
-
-        stringBuilder.append(result).append("\n");
-
-        // 先插入数据库
-        // 插入数据库
-        Chart chart = new Chart();
-        chart.setChartType(chartType);
-        chart.setName(name);
-        chart.setGoal(goal);
-        chart.setChartData(result);
-        chart.setStatus(ChartStatusEnum.Wait.getValue());
-        chart.setUserId(userService.getLoginUser(request).getId());
-
-        boolean saveResult = chartService.save(chart);
-        ThrowUtils.throwIf(!saveResult, ErrorCode.SYSTEM_ERROR, "保存失败");
-        BIResponse biResponse = new BIResponse();
-        biResponse.setChartId(chart.getId());
-
-        String chartDetailName = "chart_" + chart.getId();
-        // 创建表
-  /*
-        String[] header = lines[0].split(",");
-        List<Map<String, Object>> columnsList = new ArrayList<>();
-        for (String columnName : header) {
-            Map<String, Object> column = new HashMap<>();
-            column.put("name", columnName);
-            column.put("type", "VARCHAR(255)"); // 这里假设所有列的类型为VARCHAR(255)，你可以根据实际情况进行修改
-            columnsList.add(column);
-        }
-        chartDetailMapper.createTable(chartDetailName, columnsList);
-
-
-
+    private void createAndInsertDataToDb(Long chartId, MultipartFile multipartFile) {
+        // 动态sql分库存储表数据
+        String chartDetailName = "chart_" + chartId;
+        //获取表头
+        String csvHeader = ExcelUtils.excelToCsvGetHeader(multipartFile);
+        //log.error("=============================>" + csvHeader);
+        String[] split = csvHeader.split(",");
+        List<String> headers = new ArrayList<>();
         List<String> columnNames = new ArrayList<>();
-        for (Map<String, Object> columnMap : columnsList) {
-            columnNames.addAll(columnMap.keySet());
+        for (String s : split) {
+            if (containsChinese(s)) {
+                headers.add("'" + s + "'" + " varchar(1024)");
+            } else {
+                headers.add(s + " varchar(1024)");
+            }
+            columnNames.add(s);
         }
 
-        //插入数据
-        for (String line : lines) {
-            String[] columns = line.split(",");
-            // 处理每一列的内容
-            List<Object> values = new ArrayList<>();
+        chartDetailMapper.createTable(chartDetailName, headers);
 
-
-            Collections.addAll(values, columns);
-            // 执行插入操作
-            chartDetailMapper.insertData(chartDetailName, columnNames, values);
-        }
-*/
-        //todo 解决读取的不是一行而是整个数据
-        String[] header = lines[0].split(",");
-        List<String> columnNames = Arrays.asList(header);
-
-/*
-        for (int i = 1; i < lines.length; i++) {
-            String[] values = lines[i].split(",");
-            for (int j = 1; j < header.length; j++) {
-                Map<String, Object> column = columnsList.get(j - 1);
-                String columnName = (String) column.get("name");
-                Object value = values[j];
-                // 处理每一列的内容
-                column.put(columnName, value);
+        // 获取数据
+        String content = ExcelUtils.excelToCsvGetContent(multipartFile);
+        // log.error("内容=>" + content);
+        String[] contentValues = content.split("\n");
+        for (String row : contentValues) {
+            String[] rowValues = row.split(",");
+            List<Object> values = Arrays.asList(rowValues);
+            boolean saveSuccess = chartDetailMapper.insertData(chartDetailName, columnNames, values);
+            if (!saveSuccess) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR);
             }
         }
-*/
 
-        chartDetailMapper.createTable(chartDetailName, columnNames);
+    }
 
-        // todo 采用异步
-        // todo 建议处理异常情况
-        try {
-            CompletableFuture.runAsync(() -> {
-                //先修改图表状态为'执行中'，执行完毕后修改为'已完成'，保存执行结果，执行失败后，状态修改为'失败'记录失败信息
-                Chart updateChart = new Chart();
-                updateChart.setId(chart.getId());
-                updateChart.setStatus(ChartStatusEnum.Running.getValue());
-                boolean success = chartService.updateById(updateChart);
-                if (!success) {
-                    // todo 进一步完善失败
-                    handleChartUpdateError(chart.getId(), "更新图表状态失败");
-                    // throw new BusinessException(ErrorCode.OPERATION_ERROR, "图表更新失败");
-                    return;
-                }
-
-                // 调用AI
-                String chartResult = yuApi.doChart(modelId, stringBuilder.toString());
-                String[] splits = chartResult.split("【【【【【");
-
-                if (splits.length > 3) {
-                    handleChartUpdateError(chart.getId(), "AI生成错误");
-                    // throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI生成错误");
-                    return;
-                }
-                String genChart = splits[1].trim();
-                String genResult = splits[2].trim();
-                Chart updateChartSuccess = new Chart();
-                updateChartSuccess.setId(chart.getId());
-                // todo 枚举值
-                updateChartSuccess.setStatus(ChartStatusEnum.Succeed.getValue());
-                updateChartSuccess.setGenChart(genChart);
-                updateChartSuccess.setGenResult(genResult);
-                boolean b = chartService.updateById(updateChartSuccess);
-                if (!b) {
-                    handleChartUpdateError(chart.getId(), "更新图表状态失败");
-                }
-            }, threadPoolExecutor);
-        } catch (
-                Exception e) {
-            //todo 添加重试机制
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "同时请求人数过多，稍后进行尝试");
-        }
-
-        return ResultUtils.success(biResponse);
+    /**
+     * 判断是否为中文
+     *
+     * @param str
+     * @return
+     */
+    private static boolean containsChinese(String str) {
+        String regex = "[\\u4e00-\\u9fa5]";
+        return str.matches(regex);
     }
 
 

@@ -52,6 +52,7 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
         String sortField = chartQueryRequest.getSortField();
         String sortOrder = chartQueryRequest.getSortOrder();
 
+
         // 拼接查询条件
         queryWrapper.eq(id != null && id > 0, "id", id);
         queryWrapper.like(ObjectUtils.isNotEmpty(name), "name", name);

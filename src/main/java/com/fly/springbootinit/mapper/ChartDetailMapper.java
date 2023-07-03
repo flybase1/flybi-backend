@@ -1,5 +1,6 @@
 package com.fly.springbootinit.mapper;
 
+import com.fly.springbootinit.model.entity.Chart;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -13,7 +14,7 @@ public interface ChartDetailMapper {
      *
      * @param tableName
      */
-    boolean createTable(@Param("tableName") String tableName, @Param("columnsList") List<String> columnsList);
+    boolean createTable(@Param( "tableName" ) String tableName, @Param( "columns" ) List<String> columns);
 
     /**
      * 插入数据
@@ -26,9 +27,10 @@ public interface ChartDetailMapper {
 
     /**
      * 查看所有数据
+     *
      * @param tableName
      * @return
      */
-    List<Map<String, Object>> findAllData(@Param("tableName") String tableName);
+    List<Map<String, Object>> findAllData(String tableName);
 
 }

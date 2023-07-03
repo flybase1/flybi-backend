@@ -80,6 +80,11 @@ public class User implements Serializable {
     @TableLogic
     private Integer isDelete;
 
+    /**
+     * 剩余调用次数
+     */
+    private Integer leftCount;
+
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

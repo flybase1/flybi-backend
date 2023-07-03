@@ -2,12 +2,11 @@ package com.fly.springbootinit.model.vo;
 
 import java.io.Serializable;
 import java.util.Date;
+
 import lombok.Data;
 
 /**
  * 用户视图（脱敏）
- *
-
  */
 @Data
 public class UserVO implements Serializable {
@@ -53,6 +52,8 @@ public class UserVO implements Serializable {
      * 更新时间
      */
     private String email;
+
+    private Integer leftCount;
 
     private static final long serialVersionUID = 1L;
 }

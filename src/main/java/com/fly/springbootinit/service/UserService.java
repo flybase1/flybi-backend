@@ -116,4 +116,10 @@ public interface UserService extends IService<User> {
      * @return
      */
     boolean updateByUserId(UserUpdateRequest userUpdateRequest);
+
+    /**用户剩余使用次数减少
+     * @param request
+     * @return
+     */
+    boolean updateUserChartCount(HttpServletRequest request);
 }

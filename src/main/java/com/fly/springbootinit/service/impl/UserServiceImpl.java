@@ -18,10 +18,13 @@ import com.fly.springbootinit.model.vo.LoginUserVO;
 import com.fly.springbootinit.model.vo.UserVO;
 import com.fly.springbootinit.service.UserService;
 import com.fly.springbootinit.utils.SqlUtils;
-import java.util.ArrayList;
-import java.util.List;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
+
 import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.common.bean.WxOAuth2UserInfo;
 import org.apache.commons.lang3.RandomUtils;
@@ -32,8 +35,6 @@ import org.springframework.util.DigestUtils;
 
 /**
  * 用户服务实现
- *
-
  */
 @Service
 @Slf4j
@@ -42,7 +43,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     /**
      * 盐值，混淆密码
      */
-    private static final String SALT = "yupi";
+    private static final String SALT = "fly";
 
     @Override
     public long userRegister(String userAccount, String userPassword, String checkPassword) {
@@ -75,7 +76,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             user.setUserAccount(userAccount);
             user.setUserPassword(encryptPassword);
             user.setUserAvatar("https://picsum.photos/200/300");
-            user.setUserName("user_"+ RandomUtil.randomString(5));
+            user.setUserName("user_" + RandomUtil.randomString(5));
             boolean saveResult = this.save(user);
             if (!saveResult) {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "注册失败，数据库错误");
@@ -107,6 +108,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (user == null) {
             log.info("user login failed, userAccount cannot match userPassword");
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在或密码错误");
+        }
+        if (user.getUserRole().equals(UserRoleEnum.BAN.getValue())) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "您已经被系统拉黑，请联系管理员");
         }
         // 3. 记录用户的登录态
         request.getSession().setAttribute(USER_LOGIN_STATE, user);
@@ -250,6 +254,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String phoneNum = userUpdateRequest.getPhoneNum();
         String email = userUpdateRequest.getEmail();
         String userName = userUpdateRequest.getUserName();
+
         if (phoneNum != null) {
             boolean matches = phoneNum.matches(phonePattern);
             if (!matches) {
@@ -268,5 +273,58 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         return this.updateById(user);
     }
+
+
+    private static final int MAX_CALLS_PER_SECOND = 10;
+    private static final long ONE_SECOND_IN_MILLISECONDS = 1000L;
+    private final Map<Long, AtomicInteger> userCallCountMap = new ConcurrentHashMap<>();
+    private final Object lock = new Object(); // 锁对象
+
+    @Override
+    public boolean updateUserChartCount(HttpServletRequest request) {
+        User loginUser = getLoginUser(request);
+        if (loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
+        }
+        Long userId = loginUser.getId();
+        //ConcurrentHashMap来存储调用次数，AtomicInteger 来保证线程安全，当用户的操作次数达到阈值，就自动拉黑用户
+        synchronized (lock) {
+            AtomicInteger userCallCount = userCallCountMap.computeIfAbsent(userId, k -> new AtomicInteger(0));
+            int currentCallCount = userCallCount.incrementAndGet();
+            if (currentCallCount > MAX_CALLS_PER_SECOND) {
+                loginUser.setUserRole(UserRoleEnum.BAN.getValue());
+                request.getSession().removeAttribute(USER_LOGIN_STATE);
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "用户异常，加入黑名单");
+            }
+
+            // 重置次数
+            Timer timer = new Timer();
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    userCallCount.set(0);
+                    userCallCountMap.remove(userId);
+                }
+            }, ONE_SECOND_IN_MILLISECONDS);
+
+            Integer leftCount = loginUser.getLeftCount();
+            if (leftCount <= 0) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "次数已经耗尽，请等待明天或者联系管理员");
+            }
+            if (leftCount >= 1000) {
+                loginUser.setUserRole(UserRoleEnum.BAN.getValue());
+                request.getSession().removeAttribute(USER_LOGIN_STATE);
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "用户异常，加入黑名单");
+            }
+
+            loginUser.setLeftCount(leftCount - 1);
+            boolean b = this.updateById(loginUser);
+            if (!b) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "系统错误");
+            }
+            return b;
+        }
+    }
+
 
 }

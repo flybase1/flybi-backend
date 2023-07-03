@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +25,7 @@ import java.util.stream.Collectors;
 public class ExcelUtils {
 
 
-    public static String excelToCsv(MultipartFile multipartFile)  {
+    public static String excelToCsv(MultipartFile multipartFile) {
 /*        File file = null;
         try {
             file = ResourceUtils.getFile("classpath:test_excel.xlsx");
@@ -41,27 +42,90 @@ public class ExcelUtils {
                     .headRowNumber(0)
                     .doReadSync();
         } catch (IOException e) {
-            log.error("表格处理错误",e);
+            log.error("表格处理错误", e);
         }
-       // System.out.println(list);
-        if (CollUtil.isEmpty(list)){
+        // System.out.println(list);
+        if (CollUtil.isEmpty(list)) {
             return "";
         }
         // 转换csv
-        StringBuilder stringBuilder =new StringBuilder();
+        StringBuilder stringBuilder = new StringBuilder();
         // 读取表头
-        LinkedHashMap<Integer,String> hashMap = (LinkedHashMap<Integer, String>) list.get(0);
+        LinkedHashMap<Integer, String> hashMap = (LinkedHashMap<Integer, String>) list.get(0);
         List<String> headerList = hashMap.values().stream().filter(ObjectUtils::isNotEmpty).collect(Collectors.toList());
-        stringBuilder.append(StringUtils.join(headerList,",")).append("\n");
+        stringBuilder.append(StringUtils.join(headerList, ",")).append("\n");
         for (int i = 1; i < list.size(); i++) {
-            LinkedHashMap<Integer,String> data = (LinkedHashMap<Integer, String>) list.get(i);
+            LinkedHashMap<Integer, String> data = (LinkedHashMap<Integer, String>) list.get(i);
             List<String> dataList = data.values().stream().filter(ObjectUtils::isNotEmpty).collect(Collectors.toList());
-            stringBuilder.append(StringUtils.join(dataList,",")).append("\n");
+            stringBuilder.append(StringUtils.join(dataList, ",")).append("\n");
         }
 
         return stringBuilder.toString();
     }
 
+    /**
+     * 获取表头
+     * @param multipartFile
+     * @return
+     */
+    public static String excelToCsvGetHeader(MultipartFile multipartFile) {
+        // 读取数据
+        List<Map<Integer, String>> list = null;
+        try {
+            list = EasyExcel.read(multipartFile.getInputStream())
+                    .excelType(ExcelTypeEnum.XLSX)
+                    .sheet()
+                    .headRowNumber(0)
+                    .doReadSync();
+        } catch (IOException e) {
+            log.error("表格处理错误", e);
+        }
+        // System.out.println(list);
+        if (CollUtil.isEmpty(list)) {
+            return "";
+        }
+        // 转换csv
+        StringBuilder stringBuilder = new StringBuilder();
+        // 读取表头
+        LinkedHashMap<Integer, String> hashMap = (LinkedHashMap<Integer, String>) list.get(0);
+        List<String> headerList = hashMap.values().stream().filter(ObjectUtils::isNotEmpty).collect(Collectors.toList());
+        stringBuilder.append(StringUtils.join(headerList, ",")).append("\n");
+        return stringBuilder.toString();
+    }
+
+
+    /**
+     * 获取表格内容
+     * @param multipartFile
+     * @return
+     */
+
+    public static String excelToCsvGetContent(MultipartFile multipartFile) {
+        // 读取数据
+        List<Map<Integer, String>> list = null;
+        try {
+            list = EasyExcel.read(multipartFile.getInputStream())
+                    .excelType(ExcelTypeEnum.XLSX)
+                    .sheet()
+                    .headRowNumber(0)
+                    .doReadSync();
+        } catch (IOException e) {
+            log.error("表格处理错误", e);
+        }
+        // System.out.println(list);
+        if (CollUtil.isEmpty(list)) {
+            return "";
+        }
+        // 转换csv
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 1; i < list.size(); i++) {
+            LinkedHashMap<Integer, String> data = (LinkedHashMap<Integer, String>) list.get(i);
+            List<String> dataList = data.values().stream().filter(ObjectUtils::isNotEmpty).collect(Collectors.toList());
+            stringBuilder.append(StringUtils.join(dataList, ",")).append("\n");
+        }
+
+        return stringBuilder.toString();
+    }
 
     public static void main(String[] args) {
         excelToCsv(null);

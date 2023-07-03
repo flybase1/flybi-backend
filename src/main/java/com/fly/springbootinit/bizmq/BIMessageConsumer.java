@@ -12,7 +12,6 @@ import com.rabbitmq.client.Channel;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.checkerframework.checker.units.qual.C;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.messaging.handler.annotation.Header;
@@ -33,8 +32,8 @@ public class BIMessageConsumer {
     /**
      * 传递的是chart的id
      *
-     * @param message
-     * @param channel
+     * @param message  传递消息
+     * @param channel  交换机
      * @param deliverTag
      */
     @SneakyThrows
@@ -79,6 +78,17 @@ public class BIMessageConsumer {
             return;
         }
         String genChart = splits[1].trim();
+
+        //todo 去除无关的内容
+        int startIndex = genChart.indexOf("{");
+        int lastIndex = genChart.lastIndexOf("}");
+        if (startIndex != -1 && lastIndex != -1 && lastIndex > startIndex) {
+            String extractedContent = genChart.substring(startIndex, lastIndex + 1).trim();
+            System.out.println(extractedContent);
+        } else {
+            System.out.println("未找到匹配的内容");
+        }
+
         String genResult = splits[2].trim();
         Chart updateChartSuccess = new Chart();
         updateChartSuccess.setId(chart.getId());
@@ -95,10 +105,13 @@ public class BIMessageConsumer {
         // 消息确认
         channel.basicAck(deliverTag, false);
 
-
     }
 
-
+    /**
+     * 处理错误
+     * @param chartId
+     * @param execMessage
+     */
     private void handleChartUpdateError(long chartId, String execMessage) {
         Chart updateChartSuccess = new Chart();
         updateChartSuccess.setId(chartId);
@@ -111,7 +124,11 @@ public class BIMessageConsumer {
         }
     }
 
-
+    /**
+     * 处理输入
+     * @param chart
+     * @return
+     */
     private String builderUserInput(Chart chart) {
         String goal = chart.getGoal();
         String chartType = chart.getChartType();
@@ -132,7 +149,8 @@ public class BIMessageConsumer {
     }
 
     /**
-     * 当消息进入死性队列后，此时将状态改为failed
+     * 当消息进入死信队列后，此时将状态改为failed
+     *
      * @param chartId
      * @return
      */

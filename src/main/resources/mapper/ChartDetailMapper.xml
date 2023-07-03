@@ -32,7 +32,7 @@
     </insert>
 
     <!--查询所有数据-->
-    <select id="findAllData" parameterType="string" resultType="java.util.Map">
+    <select id="findAllData" parameterType="String" resultType="java.util.Map" >
         select *
         from ${tableName}
     </select>
