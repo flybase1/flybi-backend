@@ -78,23 +78,16 @@ public class AIModelController {
         queryWrapper.eq("isOnline", "OnLine");
         if (aName == null) {
             list = (List<Aimodel>) valueOperations.get(RedisConstant.LIST_ALL_ONLINE_AI_NAME);
-            if (list != null) {
-                return ResultUtils.success(list);
-            } else {
+            if (list == null) {
                 list = aimodelService.list(queryWrapper);
                 valueOperations.set(RedisConstant.LIST_ALL_ONLINE_AI_NAME, list);
                 redisTemplate.expire(RedisConstant.LIST_ALL_ONLINE_AI_NAME, RedisConstant.LIST_ALL_ONLINE_AI_TIME, TimeUnit.MINUTES);
-                return ResultUtils.success(list);
             }
-        }
-        list = (List<Aimodel>) valueOperations.get(RedisConstant.LIST_ALL_ONLINE_AI_NAME);
-        if (list != null) {
             return ResultUtils.success(list);
         }
+
         queryWrapper.like("aiName", aName);
         list = aimodelService.list(queryWrapper);
-        valueOperations.set(RedisConstant.LIST_ALL_ONLINE_AI_NAME, list);
-        redisTemplate.expire(RedisConstant.LIST_ALL_ONLINE_AI_NAME, RedisConstant.LIST_ALL_ONLINE_AI_TIME, TimeUnit.MINUTES);
         return ResultUtils.success(list);
     }
 
