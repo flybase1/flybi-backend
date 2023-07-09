@@ -27,7 +27,6 @@ public class ResetLeftCount {
         if (!b) {
             log.error("定时更新剩余次数错误");
         }
-
     }
 
 }

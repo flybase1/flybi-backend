@@ -9,6 +9,7 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.plugins.pagination.PageDTO;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fly.springbootinit.annotation.AuthCheck;
@@ -50,6 +51,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 帖子接口
@@ -211,6 +213,7 @@ public class ChartController {
 
     /**
      * 分页获取列表（封装类）
+     * 管理员
      *
      * @param chartQueryRequest
      * @param request
@@ -231,6 +234,7 @@ public class ChartController {
 
     /**
      * 分页获取当前用户创建的资源列表
+     * todo 增加redis缓存
      *
      * @param chartQueryRequest
      * @param request
@@ -239,27 +243,22 @@ public class ChartController {
     @PostMapping( "/my/list/page" )
     public BaseResponse<Page<Chart>> listMyChartByPage(@RequestBody ChartQueryRequest chartQueryRequest,
                                                        HttpServletRequest request) {
-        if (chartQueryRequest == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
-        User loginUser = userService.getLoginUser(request);
-        chartQueryRequest.setUserId(loginUser.getId());
-        long current = chartQueryRequest.getCurrent();
-        long size = chartQueryRequest.getPageSize();
-        chartQueryRequest.setSortOrder(CommonConstant.SORT_ORDER_DESC);
-        // 限制爬虫
-        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+            if (chartQueryRequest == null) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR);
+            }
+            User loginUser = userService.getLoginUser(request);
+            chartQueryRequest.setUserId(loginUser.getId());
+            long current = chartQueryRequest.getCurrent();
+            long size = chartQueryRequest.getPageSize();
+            chartQueryRequest.setSortOrder(CommonConstant.SORT_ORDER_DESC);
+            // 限制爬虫
+            ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
 
-        String redisKey = RedisConstant.MY_CHART_LIST + loginUser.getId();
+            Page<Chart> chartPage = chartService.page(new Page<>(current, size),
+                    chartService.getQueryWrapper(chartQueryRequest));
 
-        Page<Chart> chartPage;
-
-        chartPage = chartService.page(new Page<>(current, size),
-                chartService.getQueryWrapper(chartQueryRequest));
-
-        return ResultUtils.success(chartPage);
+            return ResultUtils.success(chartPage);
     }
-
 
     /**
      * 编辑（用户）

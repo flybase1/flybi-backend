@@ -7,6 +7,7 @@ import com.fly.springbootinit.common.BaseResponse;
 import com.fly.springbootinit.common.DeleteRequest;
 import com.fly.springbootinit.common.ErrorCode;
 import com.fly.springbootinit.common.ResultUtils;
+import com.fly.springbootinit.constant.RedisConstant;
 import com.fly.springbootinit.exception.BusinessException;
 import com.fly.springbootinit.model.dto.aimodel.AiModelAddRequest;
 import com.fly.springbootinit.model.dto.aimodel.AiModelQueryRequest;
@@ -17,10 +18,13 @@ import com.fly.springbootinit.model.entity.User;
 import com.fly.springbootinit.service.AimodelService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 创建ai模型应用
@@ -32,6 +36,8 @@ public class AIModelController {
 
     @Resource
     private AimodelService aimodelService;
+    @Resource
+    private RedisTemplate<String, Object> redisTemplate;
 
     @PostMapping( "/add" )
     public BaseResponse<Aimodel> addAiModel(@RequestBody AiModelAddRequest aiModelAddRequest) {
@@ -59,21 +65,36 @@ public class AIModelController {
 
     /**
      * 显示所有的ai模型，取出已经上线的
+     * todo 加入redis
      *
      * @param aName
      * @return
      */
     @GetMapping( "/listAll" )
     public BaseResponse<List<Aimodel>> listAiModel(String aName) {
+        ValueOperations<String, Object> valueOperations = redisTemplate.opsForValue();
+        List<Aimodel> list = null;
         QueryWrapper<Aimodel> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("isOnline", "OnLine");
         if (aName == null) {
-            List<Aimodel> list = aimodelService.list(queryWrapper);
+            list = (List<Aimodel>) valueOperations.get(RedisConstant.LIST_ALL_ONLINE_AI_NAME);
+            if (list != null) {
+                return ResultUtils.success(list);
+            } else {
+                list = aimodelService.list(queryWrapper);
+                valueOperations.set(RedisConstant.LIST_ALL_ONLINE_AI_NAME, list);
+                redisTemplate.expire(RedisConstant.LIST_ALL_ONLINE_AI_NAME, RedisConstant.LIST_ALL_ONLINE_AI_TIME, TimeUnit.MINUTES);
+                return ResultUtils.success(list);
+            }
+        }
+        list = (List<Aimodel>) valueOperations.get(RedisConstant.LIST_ALL_ONLINE_AI_NAME);
+        if (list != null) {
             return ResultUtils.success(list);
         }
-
         queryWrapper.like("aiName", aName);
-        List<Aimodel> list = aimodelService.list(queryWrapper);
+        list = aimodelService.list(queryWrapper);
+        valueOperations.set(RedisConstant.LIST_ALL_ONLINE_AI_NAME, list);
+        redisTemplate.expire(RedisConstant.LIST_ALL_ONLINE_AI_NAME, RedisConstant.LIST_ALL_ONLINE_AI_TIME, TimeUnit.MINUTES);
         return ResultUtils.success(list);
     }
 
@@ -106,7 +127,6 @@ public class AIModelController {
         }
         return ResultUtils.success(aimodel);
     }
-
 
 
 }

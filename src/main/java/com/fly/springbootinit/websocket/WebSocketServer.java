@@ -29,8 +29,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 返回单个数据
  */
 
-@ServerEndpoint( value = "/websocket" )
-@Component
+//@ServerEndpoint( value = "/websocket" )
+//@Component
 @Slf4j
 public class WebSocketServer {
     private static Logger L = LoggerFactory.getLogger(WebSocketServer.class);

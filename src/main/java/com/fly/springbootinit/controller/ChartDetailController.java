@@ -2,6 +2,7 @@ package com.fly.springbootinit.controller;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
+import cn.hutool.json.JSONObject;
 import com.fly.springbootinit.bizmq.BIMessageProducer;
 import com.fly.springbootinit.common.BaseResponse;
 import com.fly.springbootinit.common.ErrorCode;
@@ -21,6 +22,7 @@ import com.fly.springbootinit.utils.CSVUtils;
 import com.fly.springbootinit.utils.ExcelUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -80,6 +82,14 @@ public class ChartDetailController {
         map.put("tableName", tableName);
         map.put("columnNames", columnNames);
         List<Map<String, Object>> result = chartDetailMapper.findDataByCondition(map);
+
+        // 更新表结构
+//        Map<String, Object> updateParams = new HashMap<>();
+//        updateParams.put("tableName", tableName);
+//        updateParams.put("columnNames", columnNames);
+//
+//        chartDetailMapper.updateTableColumns(updateParams);
+
         String csvString = CSVUtils.getCSVString(result);
         return ResultUtils.success(csvString);
     }
@@ -125,7 +135,12 @@ public class ChartDetailController {
         chart.setUserId(loginUser.getId());
         chart.setName(name);
         chart.setChartType(chartType);
-        //chart.setChartData(csvData);
+
+        String jsonStr = csvData;
+        JSONObject jsonObject = new JSONObject(jsonStr);
+        String data = (String) jsonObject.get("data");
+        chart.setChartData(data);
+
         chart.setStatus(ChartStatusEnum.Wait.getValue());
         //chart.setChartDetailTableName(chartDetailName);
 

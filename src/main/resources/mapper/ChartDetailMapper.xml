@@ -55,5 +55,22 @@
         alter table ${tableName} rename to ${newTableName}
     </update>
 
+    <update id="updateTableColumns" parameterType="java.util.Map">
+        ALTER TABLE ${tableName}
+        <trim prefix="ADD " suffixOverrides=",">
+            <foreach item="columnName" collection="columnNames">
+                <if test="!existingColumnNames.contains(columnName)">
+                    ADD COLUMN ${columnName} VARCHAR(255)
+                </if>
+            </foreach>
+        </trim>
+        <trim prefix="DROP " suffixOverrides=",">
+            <foreach item="existingColumnName" collection="existingColumnNames">
+                <if test="!columnNames.contains(existingColumnName)">
+                    DROP COLUMN ${existingColumnName}
+                </if>
+            </foreach>
+        </trim>
+    </update>
 
 </mapper>

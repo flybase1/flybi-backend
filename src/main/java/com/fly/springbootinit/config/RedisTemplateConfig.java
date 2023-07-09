@@ -8,8 +8,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
  * redis template配置
@@ -23,7 +25,7 @@ public class RedisTemplateConfig {
     }
 
     @Bean
-    public RedisTemplate<Object, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory) {
+    public RedisTemplate<Object, Object> redisTemplate2(RedisConnectionFactory redisConnectionFactory) {
         RedisTemplate<Object, Object> template = new RedisTemplate();
         template.setConnectionFactory(redisConnectionFactory);
         // ֵ使用JSON格式序列化对象，对缓存数据key和value进行转换
@@ -36,6 +38,28 @@ public class RedisTemplateConfig {
         jacksonSeial.setObjectMapper(om);
         // 设置RedisTemplate模板API的序列化方式为JSON
         template.setDefaultSerializer(jacksonSeial);
+        return template;
+    }
+
+    /*
+    *
+    * 解决序列化的问题
+    * */
+    @Bean
+    public RedisTemplate<Object, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory) {
+        RedisTemplate<Object, Object> template = new RedisTemplate<>();
+        template.setConnectionFactory(redisConnectionFactory);
+
+        // 使用StringRedisSerializer作为键的序列化器
+        RedisSerializer<String> stringSerializer = new StringRedisSerializer();
+        template.setKeySerializer(stringSerializer);
+        template.setHashKeySerializer(stringSerializer);
+
+        // 使用GenericJackson2JsonRedisSerializer作为值的序列化器
+        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer();
+        template.setValueSerializer(jsonSerializer);
+        template.setHashValueSerializer(jsonSerializer);
+
         return template;
     }
 }

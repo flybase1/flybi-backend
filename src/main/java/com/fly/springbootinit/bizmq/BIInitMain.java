@@ -14,11 +14,11 @@ public class BIInitMain {
     public static void main(String[] args) {
         try {
             ConnectionFactory connectionFactory = new ConnectionFactory();
-            connectionFactory.setHost("localhost");
-//            connectionFactory.setHost("124.71.207.114");
-//            connectionFactory.setPort(5672);
-//            connectionFactory.setUsername("fly");
-//            connectionFactory.setPassword("Ss5187395");
+//            connectionFactory.setHost("localhost");
+            connectionFactory.setHost("124.71.207.114");
+            connectionFactory.setPort(5672);
+            connectionFactory.setUsername("fly");
+            connectionFactory.setPassword("Ss5187395");
 
             Connection connection = connectionFactory.newConnection();
             Channel channel = connection.createChannel();

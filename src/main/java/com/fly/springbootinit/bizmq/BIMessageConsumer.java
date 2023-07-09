@@ -5,9 +5,11 @@ import com.fly.springbootinit.bizmq.Constant.BIMQConstant;
 import com.fly.springbootinit.common.ErrorCode;
 import com.fly.springbootinit.constant.CommonConstant;
 import com.fly.springbootinit.exception.BusinessException;
+import com.fly.springbootinit.mapper.ChartDetailMapper;
 import com.fly.springbootinit.model.entity.Chart;
 import com.fly.springbootinit.model.enums.ChartStatusEnum;
 import com.fly.springbootinit.service.ChartService;
+import com.fly.springbootinit.utils.CSVUtils;
 import com.rabbitmq.client.Channel;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +20,8 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
+import java.util.List;
+import java.util.Map;
 
 @Component
 @Slf4j
@@ -26,7 +30,8 @@ public class BIMessageConsumer {
     private ChartService chartService;
     @Resource
     private YuApi yuApi;
-
+    @Resource
+    private ChartDetailMapper chartDetailMapper;
     //指定程序监听的消息队列确认机制
 
     /**
@@ -58,7 +63,7 @@ public class BIMessageConsumer {
         Chart updateChart = new Chart();
         updateChart.setId(chart.getId());
         updateChart.setStatus(ChartStatusEnum.Running.getValue());
-        if (updateChart.getChartDetailTableName() ==null){
+        if (updateChart.getChartDetailTableName() == null) {
             updateChart.setChartDetailTableName("chart_" + chart.getId());
         }
         boolean success = chartService.updateById(updateChart);
@@ -91,13 +96,13 @@ public class BIMessageConsumer {
         } else {
             System.out.println("未找到匹配的内容");
         }
-
         String genResult = splits[2].trim();
         Chart updateChartSuccess = new Chart();
         updateChartSuccess.setId(chart.getId());
         updateChartSuccess.setStatus(ChartStatusEnum.Succeed.getValue());
         updateChartSuccess.setGenChart(genChart);
         updateChartSuccess.setGenResult(genResult);
+
         boolean b = chartService.updateById(updateChartSuccess);
         if (!b) {
             channel.basicNack(deliverTag, false, false);

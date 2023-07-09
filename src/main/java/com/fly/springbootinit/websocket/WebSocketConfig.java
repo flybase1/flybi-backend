@@ -8,7 +8,7 @@ import javax.websocket.server.ServerEndpoint;
 /*
 * websocket连接，如果不需要可以关闭
 * */
-@Configuration
+//@Configuration
 public class WebSocketConfig {
 
     @Bean

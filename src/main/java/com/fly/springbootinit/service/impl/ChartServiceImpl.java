@@ -7,20 +7,27 @@ import com.fly.springbootinit.mapper.ChartMapper;
 import com.fly.springbootinit.model.dto.chart.ChartQueryRequest;
 
 import com.fly.springbootinit.model.entity.Chart;
+import com.fly.springbootinit.model.enums.ChartStatusEnum;
 import com.fly.springbootinit.service.ChartService;
 
 import com.fly.springbootinit.utils.SqlUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
-* @author admin
-* @description 针对表【chart(图表信息表)】的数据库操作Service实现
-* @createDate 2023-05-30 19:03:59
-*/
+ * @author admin
+ * @description 针对表【chart(图表信息表)】的数据库操作Service实现
+ * @createDate 2023-05-30 19:03:59
+ */
 @Service
 public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
-    implements ChartService{
+        implements ChartService {
 
 
     /**
@@ -54,6 +61,31 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
         return queryWrapper;
     }
 
+    @Override
+    public boolean ChangeLongTimeWaitToFailed() {
+        List<Chart> list = this.list();
+        LocalDateTime currentDateTime = LocalDateTime.now();
+        Duration waitDurationThreshold = Duration.ofMinutes(10);
+
+        List<Chart> collect = list.stream()
+                .filter(chart -> !chart.getStatus().equals(ChartStatusEnum.Failed.getValue()) && !chart.getStatus().equals(ChartStatusEnum.Succeed.getValue()))
+                .filter(chart -> Duration.between(chart.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime(), currentDateTime).compareTo(waitDurationThreshold) >= 0)
+                .map(chart -> {
+                    Chart newChart = new Chart();
+                    newChart.setId(chart.getId());
+                    newChart.setGoal(chart.getGoal());
+                    newChart.setName(chart.getName());
+                    newChart.setChartData(chart.getChartData());
+                    newChart.setChartType(chart.getChartType());
+                    newChart.setGenChart(chart.getGenChart());
+                    newChart.setGenResult(chart.getGenResult());
+                    newChart.setUserId(chart.getUserId());
+                    newChart.setStatus(ChartStatusEnum.Failed.getValue());
+                    newChart.setExecMessage(chart.getExecMessage());
+                    return newChart;
+                }).collect(Collectors.toList());
+        return this.updateBatchById(collect);
+    }
 
 }
 

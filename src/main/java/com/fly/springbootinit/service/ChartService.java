@@ -6,6 +6,7 @@ import com.fly.springbootinit.model.dto.chart.ChartQueryRequest;
 import com.fly.springbootinit.model.entity.Chart;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+
 /**
  * @author admin
  * @description 针对表【chart(图表信息表)】的数据库操作Service
@@ -14,4 +15,9 @@ import com.baomidou.mybatisplus.extension.service.IService;
 public interface ChartService extends IService<Chart> {
     QueryWrapper<Chart> getQueryWrapper(ChartQueryRequest chartQueryRequest);
 
+    /**
+     * 将长时间失败的图表解析设置为失败
+     * @return
+     */
+    boolean ChangeLongTimeWaitToFailed();
 }
