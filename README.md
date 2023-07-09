@@ -60,6 +60,22 @@
 https://github.com/flybase1/flybi-frontend
 
 
+## 使用步骤
+- 将sql文件夹里面的sql执行，生成数据库文件
+- 将yml里面的mysql，rabbit，redis相关信息换成自己的
+- 如需要改变端口，1.请在前端app.tsx的request换成自己端口 2.config.ts的schemaPath换成新的端口
+- ak,sk请至https://www.yucongming.com/获取自己的ak，sk
+
+部署线上
+- rabbitmq安装https://blog.csdn.net/qq_45173404/article/details/116429302
+- redis安装https://blog.csdn.net/m0_37959155/article/details/108897863
+- mysql安装https://blog.csdn.net/cst522445906/article/details/129165658
+- nginx安装https://blog.csdn.net/shallow72/article/details/123878716
+- jdk，maven安装自己搜索
+- rabbitmq，redis，mysql都可以采取docker安装，更加简便
+- 前端app.tsx换成自己的ip地址
+
+
 ## 更新日志
 7.5 更新日志
 完成服务器相关部署，上线网站
@@ -72,7 +88,6 @@ https://github.com/flybase1/flybi-frontend
 - 设置每位用户的调用次数
 - 接入第三方服务作为AI模型
 - 添加redisson来进行限流处理，避免传输过多造成第三方服务宕机
-- 
 
 7.9 跟新日志
 - 修改导航，将实时与非实时智能分析从导航栏移除，添加至AI服务界面
@@ -86,3 +101,22 @@ https://github.com/flybase1/flybi-frontend
 - 若干细节优化
 
 
+
+
+## 包注释说明
+- annotation 注解功能，可以添加在方法上鉴别用户
+- aop 用户登录，鉴权处理
+- api 第三方ai服务
+- bizmq rabbitMq处理
+- common 通用类
+- config 配置跨域，文档等
+- constant 常量
+- controller 
+- exception 自定义失败返回
+- manager 限流跨域处理
+- mapper
+- model  实体类
+- mq  java原生实现，主要是了解mq工作机制
+- retry  重试，未完成
+- service
+- utils 工具类
