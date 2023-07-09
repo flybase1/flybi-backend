@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fly.springbootinit.mapper.AimodelMapper">
+
+    <resultMap id="BaseResultMap" type="com.fly.springbootinit.model.entity.Aimodel">
+            <id property="id" column="id" jdbcType="INTEGER"/>
+            <result property="AIName" column="AIName" jdbcType="VARCHAR"/>
+            <result property="AIDescription" column="AIDescription" jdbcType="VARCHAR"/>
+            <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
+            <result property="isDelete" column="isDelete" jdbcType="INTEGER"/>
+            <result property="AIRoute" column="AIRoute" jdbcType="VARCHAR"/>
+            <result property="isOnline" column="isOnline" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,AIName,AIDescription,
+        createTime,updateTime,isDelete,
+        AIRoute,isOnline
+    </sql>
+</mapper>
