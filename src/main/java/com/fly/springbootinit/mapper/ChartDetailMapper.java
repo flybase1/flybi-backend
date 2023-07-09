@@ -33,4 +33,29 @@ public interface ChartDetailMapper {
      */
     List<Map<String, Object>> findAllData(String tableName);
 
+
+    /**
+     * 删除表
+     *
+     * @param tableName
+     * @return
+     */
+    boolean deleteChartDetail(String tableName);
+
+    /**
+     * 更具条件查询语句
+     *
+     * @param paramMap
+     * @return
+     */
+    List<Map<String, Object>> findDataByCondition(Map<String, Object> paramMap);
+
+
+    /**
+     * 修改表名
+     *
+     * @return
+     */
+    boolean updateTableName(@Param( "tableName" ) String oldTableName, @Param( "newTableName" ) String newTableName);
+
 }

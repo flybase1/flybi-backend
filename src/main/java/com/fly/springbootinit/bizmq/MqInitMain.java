@@ -9,7 +9,7 @@ import com.rabbitmq.client.impl.AMQConnection;
  * 创建一次测试
  */
 public class MqInitMain {
-    public static void main(String[] args) {
+    public  void main(String[] args) {
 
         try {
             ConnectionFactory connectionFactory = new ConnectionFactory();

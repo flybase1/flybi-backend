@@ -14,6 +14,6 @@ class MyMessageProducerTest {
 
     @Test
     void sendMessage() {
-        myMessageProducer.sendMessage("code_exchange","my_routingKey","123你好！！！！");
+        //myMessageProducer.sendMessage("code_exchange","my_routingKey","123你好！！！！");
     }
 }

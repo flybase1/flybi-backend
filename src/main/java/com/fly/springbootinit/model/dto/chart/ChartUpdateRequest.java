@@ -11,8 +11,6 @@ import java.util.List;
 
 /**
  * 更新请求
- *
-
  */
 @Data
 public class ChartUpdateRequest implements Serializable {
@@ -20,7 +18,7 @@ public class ChartUpdateRequest implements Serializable {
     /**
      * id
      */
-    @TableId(type = IdType.ASSIGN_ID)
+    @TableId( type = IdType.ASSIGN_ID )
     private Long id;
 
     /**
@@ -66,8 +64,12 @@ public class ChartUpdateRequest implements Serializable {
     /**
      * 是否删除
      */
-    @TableLogic
+
     private Integer isDelete;
+
+    private String status;
+
+    private Integer failedCount;
 
     private static final long serialVersionUID = 1L;
 }

@@ -32,9 +32,28 @@
     </insert>
 
     <!--查询所有数据-->
-    <select id="findAllData" parameterType="String" resultType="java.util.Map" >
+    <select id="findAllData" parameterType="String" resultType="java.util.Map">
         select *
         from ${tableName}
     </select>
+
+
+    <update id="deleteChartDetail" parameterType="String">
+        drop table ${tableName}
+    </update>
+
+    <select id="findDataByCondition" parameterType="java.util.Map" resultType="java.util.Map">
+        select
+        <foreach collection="columnNames" item="columnName" separator=",">
+            ${columnName}
+        </foreach>
+        from
+        ${tableName}
+    </select>
+
+    <update id="updateTableName" parameterType="string">
+        alter table ${tableName} rename to ${newTableName}
+    </update>
+
 
 </mapper>

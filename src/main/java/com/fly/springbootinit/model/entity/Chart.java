@@ -83,6 +83,16 @@ public class Chart implements Serializable {
     @TableLogic
     private Integer isDelete;
 
+    /**
+     * 原始数据保存表的名字
+     */
+    private String chartDetailTableName;
+
+    /**
+     * 失败次数，默认为0
+     */
+    private Integer failedCount;
+
     @TableField( exist = false )
     private static final long serialVersionUID = 1L;
 
@@ -110,7 +120,9 @@ public class Chart implements Serializable {
                 && (this.getUpdateTime() == null ? other.getUpdateTime() == null : this.getUpdateTime().equals(other.getUpdateTime()))
                 && (this.getIsDelete() == null ? other.getIsDelete() == null : this.getIsDelete().equals(other.getIsDelete()))
                 && (this.getStatus() == null ? other.getStatus() == null : this.getStatus().equals(other.getStatus()))
-                && (this.getExecMessage() == null ? other.getExecMessage() == null : this.getExecMessage().equals(other.getExecMessage()));
+                && (this.getExecMessage() == null ? other.getExecMessage() == null : this.getExecMessage().equals(other.getExecMessage()))
+                && (this.getChartDetailTableName() == null ? other.getChartDetailTableName() == null : this.getChartDetailTableName().equals(other.getChartDetailTableName()))
+                ;
     }
 
     @Override
@@ -130,6 +142,7 @@ public class Chart implements Serializable {
         result = prime * result + ((getCreateTime() == null) ? 0 : getCreateTime().hashCode());
         result = prime * result + ((getUpdateTime() == null) ? 0 : getUpdateTime().hashCode());
         result = prime * result + ((getIsDelete() == null) ? 0 : getIsDelete().hashCode());
+        result = prime * result + ((getChartDetailTableName() == null) ? 0 : getChartDetailTableName().hashCode());
         return result;
     }
 

@@ -12,14 +12,14 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 
-@Component
+//@Component
 @Slf4j
 public class MyMessageConsumer {
     //指定程序监听的消息队列确认机制
-    @SneakyThrows
+/*    @SneakyThrows
     @RabbitListener( queues = {"code_queue"}, ackMode = "MANUAL" )
     public void receiveMessage(String message, Channel channel, @Header( AmqpHeaders.DELIVERY_TAG ) long deliverTag) {
         log.info("receive message = {}", message);
         channel.basicAck(deliverTag, false);
-    }
+    }*/
 }

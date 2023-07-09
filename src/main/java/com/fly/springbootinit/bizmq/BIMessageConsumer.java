@@ -32,8 +32,8 @@ public class BIMessageConsumer {
     /**
      * 传递的是chart的id
      *
-     * @param message  传递消息
-     * @param channel  交换机
+     * @param message    传递消息
+     * @param channel    交换机
      * @param deliverTag
      */
     @SneakyThrows
@@ -58,6 +58,9 @@ public class BIMessageConsumer {
         Chart updateChart = new Chart();
         updateChart.setId(chart.getId());
         updateChart.setStatus(ChartStatusEnum.Running.getValue());
+        if (updateChart.getChartDetailTableName() ==null){
+            updateChart.setChartDetailTableName("chart_" + chart.getId());
+        }
         boolean success = chartService.updateById(updateChart);
         if (!success) {
             // todo 进一步完善失败,死信机制
@@ -72,19 +75,19 @@ public class BIMessageConsumer {
         String chartResult = yuApi.doChart(CommonConstant.BI_MODEL_ID, builderUserInput(chart));
         String[] splits = chartResult.split("【【【【【");
 
-        if (splits.length > 3) {
+        if (splits.length > 3 || splits.length < 3) {
             handleChartUpdateError(chart.getId(), "AI生成错误");
             // throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI生成错误");
             return;
         }
+
         String genChart = splits[1].trim();
 
         //todo 去除无关的内容
         int startIndex = genChart.indexOf("{");
         int lastIndex = genChart.lastIndexOf("}");
         if (startIndex != -1 && lastIndex != -1 && lastIndex > startIndex) {
-            String extractedContent = genChart.substring(startIndex, lastIndex + 1).trim();
-            System.out.println(extractedContent);
+            genChart = genChart.substring(startIndex, lastIndex + 1).trim();
         } else {
             System.out.println("未找到匹配的内容");
         }
@@ -109,6 +112,7 @@ public class BIMessageConsumer {
 
     /**
      * 处理错误
+     *
      * @param chartId
      * @param execMessage
      */
@@ -126,6 +130,7 @@ public class BIMessageConsumer {
 
     /**
      * 处理输入
+     *
      * @param chart
      * @return
      */

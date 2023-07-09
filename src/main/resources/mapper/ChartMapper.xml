@@ -5,26 +5,28 @@
 <mapper namespace="com.fly.springbootinit.mapper.ChartMapper">
 
     <resultMap id="BaseResultMap" type="com.fly.springbootinit.model.entity.Chart">
-            <id property="id" column="id" jdbcType="BIGINT"/>
-            <result property="goal" column="goal" jdbcType="VARCHAR"/>
-            <result property="name" column="name" jdbcType="VARCHAR"/>
-            <result property="chartData" column="chartData" jdbcType="VARCHAR"/>
-            <result property="chartType" column="chartType" jdbcType="VARCHAR"/>
-            <result property="genChart" column="genChart" jdbcType="VARCHAR"/>
-            <result property="genResult" column="genResult" jdbcType="VARCHAR"/>
-            <result property="userId" column="userId" jdbcType="BIGINT"/>
-            <result property="status" column="status" jdbcType="VARCHAR"/>
-            <result property="execMessage" column="execMessage" jdbcType="VARCHAR"/>
-            <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
-            <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
-            <result property="isDelete" column="isDelete" jdbcType="TINYINT"/>
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="goal" column="goal" jdbcType="VARCHAR"/>
+        <result property="name" column="name" jdbcType="VARCHAR"/>
+        <result property="chartData" column="chartData" jdbcType="VARCHAR"/>
+        <result property="chartType" column="chartType" jdbcType="VARCHAR"/>
+        <result property="genChart" column="genChart" jdbcType="VARCHAR"/>
+        <result property="genResult" column="genResult" jdbcType="VARCHAR"/>
+        <result property="userId" column="userId" jdbcType="BIGINT"/>
+        <result property="status" column="status" jdbcType="VARCHAR"/>
+        <result property="execMessage" column="execMessage" jdbcType="VARCHAR"/>
+        <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
+        <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
+        <result property="isDelete" column="isDelete" jdbcType="TINYINT"/>
+        <result property="failedCount" column="failedCount" jdbcType="INTEGER"/>
+        <result property="chartDetailTableName" column="chartDetailTableName" jdbcType="VARCHAR"/>
     </resultMap>
 
     <sql id="Base_Column_List">
         id,goal,name,
         chartData,chartType,genChart,
         genResult,userId,status,execMessage,createTime,
-        updateTime,isDelete
+        updateTime,isDelete,chartDetailTableName,failedCount
     </sql>
 
 
@@ -33,6 +35,13 @@
     </select>
 
 
-
+    <select id="selectLatestChart" resultType="java.util.Map">
+        select id, name, status, updateTime
+        from chart
+        where updateTime != createTime
+          and updateTime >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+        order by updateTime desc
+        limit 1;
+    </select>
 
 </mapper>

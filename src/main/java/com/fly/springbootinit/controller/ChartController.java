@@ -1,5 +1,6 @@
 package com.fly.springbootinit.controller;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 
 import cn.hutool.core.io.FileUtil;
@@ -31,6 +32,7 @@ import com.fly.springbootinit.model.enums.ChartStatusEnum;
 import com.fly.springbootinit.model.vo.BIResponse;
 import com.fly.springbootinit.service.ChartService;
 import com.fly.springbootinit.service.UserService;
+import com.fly.springbootinit.utils.CSVUtils;
 import com.fly.springbootinit.utils.ExcelUtils;
 import com.google.gson.Gson;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -131,6 +133,17 @@ public class ChartController {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         boolean b = chartService.removeById(id);
+        String tableName = "chart_" + id;
+        if (b) {
+            // 删除数据的同时删除相关的表
+            boolean deleteChartDetail = chartDetailMapper.deleteChartDetail(tableName);
+            if (!deleteChartDetail) {
+                return ResultUtils.success(b);
+            } else {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "系统错误");
+            }
+        }
+
         return ResultUtils.success(b);
     }
 
@@ -146,13 +159,16 @@ public class ChartController {
         if (chartUpdateRequest == null || chartUpdateRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        Chart chart = new Chart();
-        BeanUtils.copyProperties(chartUpdateRequest, chart);
-
-        Long id = chartUpdateRequest.getId();
         // 判断是否存在
-        Chart newChart = chartService.getById(id);
-        ThrowUtils.throwIf(newChart == null, ErrorCode.NOT_FOUND_ERROR);
+        Chart chart = chartService.getById(chartUpdateRequest.getId());
+        ThrowUtils.throwIf(chart == null, ErrorCode.NOT_FOUND_ERROR);
+        Chart newChart = new Chart();
+        newChart.setId(chart.getId());
+        if (chartUpdateRequest.getFailedCount() > 2 || chartUpdateRequest.getFailedCount() < 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数不能大于2或者小于0");
+        }
+        newChart.setFailedCount(chartUpdateRequest.getFailedCount());
+        newChart.setStatus(chartUpdateRequest.getStatus());
         boolean result = chartService.updateById(newChart);
         return ResultUtils.success(result);
     }
@@ -200,6 +216,7 @@ public class ChartController {
      * @param request
      * @return
      */
+    @AuthCheck( mustRole = UserConstant.ADMIN_ROLE )
     @PostMapping( "/list/page" )
     public BaseResponse<Page<Chart>> listChartByPage(@RequestBody ChartQueryRequest chartQueryRequest,
                                                      HttpServletRequest request) {
@@ -229,6 +246,7 @@ public class ChartController {
         chartQueryRequest.setUserId(loginUser.getId());
         long current = chartQueryRequest.getCurrent();
         long size = chartQueryRequest.getPageSize();
+        chartQueryRequest.setSortOrder(CommonConstant.SORT_ORDER_DESC);
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
 
@@ -283,7 +301,7 @@ public class ChartController {
      */
     @PostMapping( "/gen" )
     public BaseResponse<BIResponse> genChartByAi(@RequestPart( "file" ) MultipartFile multipartFile,
-                                                 GenChartByAIRequest genChartByAiRequest, HttpServletRequest request) {
+                                                 GenChartByAIRequest genChartByAiRequest, HttpServletRequest request) throws InterruptedException {
         String name = genChartByAiRequest.getName();
         String goal = genChartByAiRequest.getGoal();
         String chartType = genChartByAiRequest.getChartType();
@@ -350,11 +368,12 @@ public class ChartController {
         Chart chart = new Chart();
         chart.setName(name);
         chart.setGoal(goal);
-        chart.setChartData(csvData);
+        //chart.setChartData(csvData);
         chart.setChartType(chartType);
         chart.setGenChart(genChart);
         chart.setGenResult(genResult);
-        chart.setStatus(ChartStatusEnum.Succeed.getValue());
+        Thread.sleep(1000);
+        //chart.setStatus(ChartStatusEnum.Succeed.getValue());
         chart.setUserId(loginUser.getId());
         boolean countSuccess = userService.updateUserChartCount(request);
 
@@ -372,7 +391,28 @@ public class ChartController {
         biResponse.setGenResult(genResult);
         biResponse.setChartId(chart.getId());
         createAndInsertDataToDb(chart.getId(), multipartFile);
+        updateTableNameAndChartStatus(chart.getId());
         return ResultUtils.success(biResponse);
+    }
+
+    /**
+     * 由于同步的时候没有chartId，所以只能提取方法来转换chart状态
+     *
+     * @param chartId
+     */
+    private void updateTableNameAndChartStatus(Long chartId) {
+        Chart chart = chartService.getById(chartId);
+        Chart updateChart = new Chart();
+        updateChart.setId(chart.getId());
+        updateChart.setChartDetailTableName("chart_" + chartId);
+        if (chart.getGenChart() == null || chart.getGenResult() == null) {
+            chart.setStatus(ChartStatusEnum.Failed.getValue());
+        }
+        updateChart.setStatus(ChartStatusEnum.Succeed.getValue());
+        boolean b = chartService.updateById(updateChart);
+        if (!b) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR);
+        }
     }
 
 
@@ -560,7 +600,9 @@ public class ChartController {
         chart.setChartType(chartType);
         chart.setName(name);
         chart.setGoal(goal);
-        chart.setChartData(result);
+
+        //这个原数据不存在在这里，而是在其他表里面
+        //chart.setChartData(result);
         chart.setStatus(ChartStatusEnum.Wait.getValue());
         chart.setUserId(userService.getLoginUser(request).getId());
         boolean countSuccess = userService.updateUserChartCount(request);
@@ -641,5 +683,120 @@ public class ChartController {
         return str.matches(regex);
     }
 
+
+    /**
+     * 手动重试，重试次数有三次
+     * 重试,假设失败的原因是ai服务传递结果不正确，已经创建了正确的数据库
+     * 将相应的数据从数据库中取出，读取数据库相应的表的内容，转换为csv格式，模拟上传
+     * 采用异步化来完成调用
+     *
+     * @param request
+     * @return
+     */
+    @PostMapping( "/gen/async/asyn/retry" )
+    public BaseResponse<BIResponse> genChartAiAsyncRetry(GenChartByAIIDRequest genChartByAIIDRequest, HttpServletRequest request) {
+        Long chartId = genChartByAIIDRequest.getId();
+        Chart chartRetry = chartService.getById(chartId);
+
+        if (chartRetry.getFailedCount() >= 3) {
+            chartRetry.setStatus(ChartStatusEnum.Failed.getValue());
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "重试次数已达三次，第三方服务宕机，请联系管理员");
+        }
+
+        String goal = chartRetry.getGoal();
+        String chartType = chartRetry.getChartType();
+        String chartDetailTableName = chartRetry.getChartDetailTableName();
+
+        if (chartRetry == null) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR);
+        }
+        chartRetry.setGenChart("");
+        chartRetry.setGenResult("");
+        boolean b = chartService.updateById(chartRetry);
+        if (!b) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR);
+        }
+
+        User loginUser = userService.getLoginUser(request);
+        // todo 限流判断
+        // 每个用户限流器
+        redisLimiterManager.doRateLimit("genChartByAi" + loginUser.getId());
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("分析需求:").append("\n");
+        String userGoal = goal;
+        if (StringUtils.isNotBlank(chartType)) {
+            userGoal += ",请使用" + chartType;
+        }
+        stringBuilder.append(userGoal).append("\n");
+        stringBuilder.append("原始数据:").append("\n");
+
+        List<Map<String, Object>> allData = chartDetailMapper.findAllData(chartDetailTableName);
+        String data = CSVUtils.getCSVString(allData);
+        stringBuilder.append(data).append("\n");
+
+        // 调用次数减少
+        boolean countSuccess = userService.updateUserChartCount(request);
+        if (!countSuccess) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR);
+        }
+        BIResponse biResponse = new BIResponse();
+        biResponse.setChartId(chartId);
+
+        try {
+            CompletableFuture.runAsync(() -> {
+                //先修改图表状态为'执行中'，执行完毕后修改为'已完成'，保存执行结果，执行失败后，状态修改为'失败'记录失败信息
+                Chart updateChart = new Chart();
+                updateChart.setId(chartId);
+                updateChart.setStatus(ChartStatusEnum.Running.getValue());
+                // 重试次数加一
+                updateChart.setFailedCount(chartRetry.getFailedCount() + 1);
+                boolean success = chartService.updateById(updateChart);
+                if (!success) {
+                    // todo 进一步完善失败
+                    handleChartUpdateError(chartId, "更新图表状态失败");
+                    // throw new BusinessException(ErrorCode.OPERATION_ERROR, "图表更新失败");
+                    return;
+                }
+
+                // 调用AI
+                String chartResult = yuApi.doChart(CommonConstant.BI_MODEL_ID, stringBuilder.toString());
+                String[] splits = chartResult.split("【【【【【");
+
+                if (splits.length > 3) {
+                    handleChartUpdateError(chartId, "AI生成错误");
+                    // throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI生成错误");
+                    return;
+                }
+                String genChart = splits[1].trim();
+                String genResult = splits[2].trim();
+                //todo 去除无关的内容
+                int startIndex = genChart.indexOf("{");
+                int lastIndex = genChart.lastIndexOf("}");
+                if (startIndex != -1 && lastIndex != -1 && lastIndex > startIndex) {
+                    genChart = genChart.substring(startIndex, lastIndex + 1).trim();
+                } else {
+                    log.error("split genChart error" + LocalDateTime.now());
+                    throw new BusinessException(ErrorCode.SYSTEM_ERROR);
+                }
+                Chart updateChartSuccess = new Chart();
+                updateChartSuccess.setId(chartId);
+                // todo 枚举值
+                updateChartSuccess.setStatus(ChartStatusEnum.Succeed.getValue());
+                updateChartSuccess.setGenChart(genChart);
+                updateChartSuccess.setGenResult(genResult);
+                boolean successU = chartService.updateById(updateChartSuccess);
+                if (!successU) {
+                    handleChartUpdateError(chartId, "更新图表状态失败");
+                }
+            }, threadPoolExecutor);
+        } catch (Exception e) {
+            log.error("function genChartAiAsyncRetry error" + LocalDateTime.now());
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "系统同时请求人数过多，稍后再试");
+        }
+
+        return ResultUtils.success(biResponse);
+
+    }
 
 }

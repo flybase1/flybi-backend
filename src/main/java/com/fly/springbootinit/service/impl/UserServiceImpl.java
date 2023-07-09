@@ -293,6 +293,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             int currentCallCount = userCallCount.incrementAndGet();
             if (currentCallCount > MAX_CALLS_PER_SECOND) {
                 loginUser.setUserRole(UserRoleEnum.BAN.getValue());
+                this.updateById(loginUser);
                 request.getSession().removeAttribute(USER_LOGIN_STATE);
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "用户异常，加入黑名单");
             }
@@ -313,6 +314,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             }
             if (leftCount >= 1000) {
                 loginUser.setUserRole(UserRoleEnum.BAN.getValue());
+                this.updateById(loginUser);
                 request.getSession().removeAttribute(USER_LOGIN_STATE);
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "用户异常，加入黑名单");
             }

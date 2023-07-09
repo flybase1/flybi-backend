@@ -24,4 +24,10 @@ class YuApiTest {
                 "3号,30");
         System.out.println(test);
     }
+
+
+    @Test
+    void test() {
+
+    }
 }

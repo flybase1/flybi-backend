@@ -1,5 +1,6 @@
 package com.fly.springbootinit.mapper;
 
+import com.fly.springbootinit.websocket.ChartLeatest;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -20,5 +21,12 @@ class ChartMapperTest {
 
         List<Map<String, Object>> maps = chartMapper.queryChartData(querySql);
         System.out.println(maps);
+    }
+
+
+    @Test
+    void testShow() {
+        Map<String, Object> map = chartMapper.selectLatestChart();
+        System.out.println(map);
     }
 }
