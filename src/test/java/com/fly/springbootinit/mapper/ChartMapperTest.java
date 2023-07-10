@@ -1,6 +1,5 @@
 package com.fly.springbootinit.mapper;
 
-import com.fly.springbootinit.websocket.ChartLeatest;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 

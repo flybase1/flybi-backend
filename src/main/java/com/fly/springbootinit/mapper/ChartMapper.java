@@ -2,9 +2,7 @@ package com.fly.springbootinit.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.fly.springbootinit.model.entity.Chart;
-import com.fly.springbootinit.websocket.ChartLeatest;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 import java.util.Map;

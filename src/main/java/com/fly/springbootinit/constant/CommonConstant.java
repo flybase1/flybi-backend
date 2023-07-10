@@ -20,4 +20,7 @@ public interface CommonConstant {
      */
     Long BI_MODEL_ID = 1663789163637420033L;
 
+
+    Long CHAT_MODEL_ID = 1677993065421332481L;
+
 }

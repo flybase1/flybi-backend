@@ -1,7 +1,5 @@
 package com.fly.springbootinit.mapper;
 
-import com.fly.springbootinit.model.entity.Chart;
-import com.fly.springbootinit.model.entity.UpdateTableParams;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 

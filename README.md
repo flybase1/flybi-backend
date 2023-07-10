@@ -77,7 +77,7 @@ https://github.com/flybase1/flybi-frontend
 
 
 ## 更新日志
-2023/7/9 更新日志
+2023/7/6 更新日志
 完成服务器相关部署，上线网站
 内容包含
 - 用户注册登录修改信息
@@ -106,6 +106,9 @@ https://github.com/flybase1/flybi-frontend
 - 修复图表解析一直处于等待问题，超时解析设置为失败
 - 修复搜索bug
 
+2023/7/10 最后版本
+- 添加AI聊天
+- 修复部分bug
 
 ## 包注释说明
 - annotation 注解功能，可以添加在方法上鉴别用户
