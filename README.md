@@ -1,7 +1,25 @@
 # 飞云 BI
 
 区别于传统BI，用户只需要导入原始数据集、并输入分析诉求，就能自动生成可视化图表及分析结论，实现数据分析的降本增效。
+</br>
+采用Springboot+React开发的BI网页
 
+<p align="center">
+<a target="_blank" href="https://github.com/X1192176811/blog">
+<img src="https://img.shields.io/hexpm/l/plug.svg"/>
+<img src="https://img.shields.io/badge/JDK-1.8+-green.svg"/>
+<img src="https://img.shields.io/badge/springboot-2.7.3.RELEASE-green"/>
+<img src="https://img.shields.io/badge/react-green"/>
+<img src="https://img.shields.io/badge/mysql-8.0.29-green"/>
+<img src="https://img.shields.io/badge/mybatis--plus-3.4.0-green"/>
+<img src="https://img.shields.io/badge/redis-2.3.7.RELEASE-green"/>
+<img src="https://img.shields.io/badge/rabbitmq-2.3.7.RELEASE-green"/>
+<img src="https://img.shields.io/badge/Jsoup-1.15.3-green"/>
+</a>
+
+
+## 体验地址
+124.71.207.114
 ### 主流框架
 
 - Spring Boot 2.7.4
